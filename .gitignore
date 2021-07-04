@@ -130,3 +130,6 @@ dmypy.json
 
 # Config should never be in github
 .env
+
+# This is individual data
+orders-received.json

@@ -1,3 +1,5 @@
 [x] warnings.warn("find_element_by_* commands are deprecated. Please use find_element() instead")
 [ ] better logging of timers
 [ ] parallelize by fanning-out the order retrieval across drivers sharing cookies?
+[ ] orders-received.json (and remove filter-by-date)
+[ ] mypy?

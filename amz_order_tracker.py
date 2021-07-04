@@ -1,7 +1,11 @@
+#!/usr/bin/env python3
+
 import urllib
 from urllib.parse import urlparse
 from timer import Timer
 import json
+from datetime import datetime, timedelta
+import dateparser
 
 import selenium
 from selenium import webdriver
@@ -29,7 +33,7 @@ def login(driver):
     driver.find_element(By.ID, "ap_email").send_keys(config["email"], Keys.RETURN)
     driver.find_element(By.ID, "ap_password").send_keys(config["password"], Keys.RETURN)
 
-    max_delay = 5  # seconds
+    max_delay = 10  # seconds
     WebDriverWait(driver, max_delay).until(EC.title_contains("Amazon.com"))
 
 
@@ -161,8 +165,28 @@ def get_data_from_urls(driver, urls):
 
         data.append(datum)
 
-    print("len(data, urls): {}", len(data), len(urls))
-    return data
+    # Throw out anything more than a week old. This is not the performant way
+    # to do this (we could probably filter this at an earlier step), but it's
+    # the easiest to write right now.
+
+    data2 = []
+    for d in data:
+        try:
+            datestr = d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
+            date = dateparser.parse(
+                d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
+            )
+            target = (datetime.now() - timedelta(days=7))
+
+            print("H", datestr, date, target)
+
+            if d["status"] == "Your package may be lost" or date > target:
+                data2.append(d)
+        except TypeError as e:
+            print("Error", e)
+
+    print("len(data, data2, urls): {}", len(data), len(data2), len(urls))
+    return data2
 
 
 if __name__ == "__main__":
