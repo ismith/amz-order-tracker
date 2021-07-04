@@ -2,4 +2,5 @@
 [ ] better logging of timers
 [ ] parallelize by fanning-out the order retrieval across drivers sharing cookies?
 [x] orders-received.json
+[x] progress bar with tqdm
 [ ] mypy?

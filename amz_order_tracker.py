@@ -17,6 +17,7 @@ from selenium.common.exceptions import TimeoutException
 
 from dotenv import dotenv_values
 from itertools import filterfalse
+from tqdm import tqdm
 
 
 # https://docs.python.org/3/library/itertools.html#recipes
@@ -171,16 +172,9 @@ def get_data_from_track_package_url(driver, tp_url):
 # Betcha we could get the cookies from the driver and spin up moar instances to
 # run in parallel
 def get_data_from_urls(driver, urls):
-    total = len(urls)
-    ctr = 0
-
     data = []
 
-    for url in urls:
-        ctr += 1
-        # tqdm
-        print("Url {}/{}".format(ctr, total))
-
+    for url in tqdm(urls, leave=True, unit="pkg url"):
         datum = get_data_from_track_package_url(driver, url)
 
         data.append(datum)
