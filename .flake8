@@ -1,0 +1,3 @@
+[flake8]
+# E508, let Black handle line length
+ignore = E501
