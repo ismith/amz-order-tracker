@@ -189,7 +189,19 @@ def get_data_from_urls(driver, urls):
     # the easiest to write right now.
 
     data2 = []
+
+    f = open("orders-received.json")
+    j = json.load(f)
+    skipOrders = j["skip"]["orders"]
+    skipTPAs = j["skip"]["tpas"]
     for d in unique_everseen(data, lambda d: d['trackingId'] or d['orderIds'][0]):
+        # If it's in the skip list, skip it.
+        if [v for v in d['orderIds'] if v in skipOrders]:
+            next
+
+        if d['trackingId'] in skipTPAs:
+            next
+
         try:
             datestr = d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
             date = dateparser.parse(
