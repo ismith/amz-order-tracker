@@ -16,7 +16,26 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 
 from dotenv import dotenv_values
+from itertools import filterfalse
 
+
+# https://docs.python.org/3/library/itertools.html#recipes
+def unique_everseen(iterable, key=None):
+    "List unique elements, preserving order. Remember all elements ever seen."
+    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    # unique_everseen('ABBCcAD', str.lower) --> A B C D
+    seen = set()
+    seen_add = seen.add
+    if key is None:
+        for element in filterfalse(seen.__contains__, iterable):
+            seen_add(element)
+            yield element
+    else:
+        for element in iterable:
+            k = key(element)
+            if k not in seen:
+                seen_add(k)
+                yield element
 
 def start_driver():
     driver = webdriver.Chrome(service_args=["--verbose"])
@@ -139,7 +158,7 @@ def get_data_from_track_package_url(driver, tp_url):
         "status": status,
         "milestone": milestone,
         "trackingId": trackingId,
-        "orderIds": orderIds,
+        "orderIds": list(set(orderIds)),
         "url": tp_url,
     }
 
@@ -170,7 +189,7 @@ def get_data_from_urls(driver, urls):
     # the easiest to write right now.
 
     data2 = []
-    for d in data:
+    for d in unique_everseen(data, lambda d: d['trackingId'] or d['orderIds'][0]):
         try:
             datestr = d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
             date = dateparser.parse(
