@@ -26,8 +26,8 @@ def login(driver):
 
     login_url = """https://www.amazon.com/ap/signin?openid.pape.max_auth_age=0&openid.return_to=https%3A%2F%2Fwww.amazon.com%2F%3Fref_%3Dnav_custrec_signin&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.assoc_handle=usflex&openid.mode=checkid_setup&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0&"""
     driver.get(login_url)
-    driver.find_element_by_id("ap_email").send_keys(config["email"], Keys.RETURN)
-    driver.find_element_by_id("ap_password").send_keys(config["password"], Keys.RETURN)
+    driver.find_element(By.ID, "ap_email").send_keys(config["email"], Keys.RETURN)
+    driver.find_element(By.ID, "ap_password").send_keys(config["password"], Keys.RETURN)
 
     max_delay = 5  # seconds
     WebDriverWait(driver, max_delay).until(EC.title_contains("Amazon.com"))
@@ -59,13 +59,13 @@ def orders_page_get_urls(driver):
 
             tp_urls = [
                 tp.get_attribute("href")
-                for tp in driver.find_elements_by_link_text("Track package")
+                for tp in driver.find_elements(By.LINK_TEXT, "Track package")
             ]
             # print("Page {} had {} packages".format(page_count, len(tp_urls)))
             track_package_urls.extend(tp_urls)
 
             # TODO: can we get the page # from the DOM?
-            driver.find_element_by_link_text("Next→").click()
+            driver.find_element(By.LINK_TEXT, "Next→").click()
     except selenium.common.exceptions.NoSuchElementException:
         # The 'Next→' button is no longer a link, so we're at the end of the
         # orders.
@@ -110,23 +110,21 @@ def get_data_from_track_package_url(driver, tp_url):
         pass
 
     try:
-        trackingId = driver.find_element_by_class_name(
-            "carrierRelatedInfo-trackingId-text"
+        trackingId = driver.find_element(
+            By.CLASS_NAME, "carrierRelatedInfo-trackingId-text"
         ).text
     except:  # noqa:#722
         trackingId = ""
 
     try:
-        milestone = driver.find_element_by_class_name(
-            "milestone-primaryMessage"
-        ).text
+        milestone = driver.find_element(By.CLASS_NAME, "milestone-primaryMessage").text
     except:  # noqa:#722
-        milestone = ''
+        milestone = ""
 
-    status = driver.find_element_by_id("primaryStatus").text
+    status = driver.find_element(By.ID, "primaryStatus").text
 
-    _orderContainer = driver.find_element_by_id("ordersInPackage-container")
-    _orders = _orderContainer.find_elements_by_class_name("a-link-normal")
+    _orderContainer = driver.find_element(By.ID, "ordersInPackage-container")
+    _orders = _orderContainer.find_elements(By.CLASS_NAME, "a-link-normal")
     _orderLinks = [orderLink.get_attribute("href") for orderLink in _orders]
     orderIds = [
         urllib.parse.parse_qs(urlparse(orderLink).query)["orderID"][0]
