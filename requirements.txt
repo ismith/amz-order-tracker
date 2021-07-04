@@ -4,3 +4,4 @@ bpython
 timer
 dateparser
 tqdm
+p_tqdm

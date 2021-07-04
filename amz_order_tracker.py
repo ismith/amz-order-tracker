@@ -18,6 +18,7 @@ from selenium.common.exceptions import TimeoutException
 from dotenv import dotenv_values
 from itertools import filterfalse
 from tqdm import tqdm
+from p_tqdm import p_map
 
 
 # https://docs.python.org/3/library/itertools.html#recipes
@@ -37,6 +38,7 @@ def unique_everseen(iterable, key=None):
             if k not in seen:
                 seen_add(k)
                 yield element
+
 
 def start_driver():
     driver = webdriver.Chrome(service_args=["--verbose"])
@@ -69,60 +71,59 @@ def login(driver):
 
 
 def orders_page_get_urls(driver):
+    # Defaults to past 3 months
+    orders_url = "https://www.amazon.com/gp/css/order-history?ref_=nav_orders_first"
+    driver.get(orders_url)
+
+    track_package_urls = []
+    page_count = 0
+
+    # Get all the "Track package" links from the page, then click "Next→", until
+    # you've covered all the pages.
     try:
-        new_driver = fork_driver(driver)
+        while True:
+            page_count += 1
+            print("Page: {}".format(page_count))
+            locator = (By.LINK_TEXT, "Track package")
+            max_delay = 1  # seconds
+            # Wait until at least 1 "Track package" has shown up
+            try:
+                WebDriverWait(driver, max_delay).until(
+                    EC.visibility_of_element_located(locator)
+                )
+            except TimeoutException:
+                pass
 
-        # Defaults to past 3 months
-        orders_url = "https://www.amazon.com/gp/css/order-history?ref_=nav_orders_first"
-        new_driver.get(orders_url)
+            tp_urls = [
+                tp.get_attribute("href")
+                for tp in driver.find_elements(By.LINK_TEXT, "Track package")
+            ]
+            # print("Page {} had {} packages".format(page_count, len(tp_urls)))
+            track_package_urls.extend(tp_urls)
 
-        track_package_urls = []
-        page_count = 0
+            # TODO: can we get the page # from the DOM?
+            driver.find_element(By.LINK_TEXT, "Next→").click()
+    except selenium.common.exceptions.NoSuchElementException:
+        # The 'Next→' button is no longer a link, so we're at the end of the
+        # orders.
+        pass
 
-        # Get all the "Track package" links from the page, then click "Next→", until
-        # you've covered all the pages.
-        try:
-            while True:
-                page_count += 1
-                print("Page: {}".format(page_count))
-                locator = (By.LINK_TEXT, "Track package")
-                max_delay = 1  # seconds
-                # Wait until at least 1 "Track package" has shown up
-                try:
-                    WebDriverWait(new_driver, max_delay).until(
-                        EC.visibility_of_element_located(locator)
-                    )
-                except TimeoutException:
-                    pass
-
-                tp_urls = [
-                    tp.get_attribute("href")
-                    for tp in new_driver.find_elements(By.LINK_TEXT, "Track package")
-                ]
-                # print("Page {} had {} packages".format(page_count, len(tp_urls)))
-                track_package_urls.extend(tp_urls)
-
-                # TODO: can we get the page # from the DOM?
-                new_driver.find_element(By.LINK_TEXT, "Next→").click()
-        except selenium.common.exceptions.NoSuchElementException:
-            # The 'Next→' button is no longer a link, so we're at the end of the
-            # orders.
-            pass
-
-        if False:
-            print(
-                "Processed {} pages, got {} track_package_urls",
-                page_count,
-                track_package_urls,  # noqa:E501
-            )
-
-    finally:
-        new_driver.quit()
+    if False:
+        print(
+            "Processed {} pages, got {} track_package_urls",
+            page_count,
+            track_package_urls,  # noqa:E501
+        )
 
     return (track_package_urls, page_count)
 
 
-def get_data_from_track_package_url(driver, tp_url):
+def get_data_from_track_package_url(cookies, tp_url):
+    driver = webdriver.Chrome(service_args=["--verbose"])
+    driver.get("https://www.amazon.com")
+    for cookie in cookies:
+        driver.add_cookie(cookie)
+
     max_delay = 2
     driver.get(tp_url)
 
@@ -182,18 +183,21 @@ def get_data_from_track_package_url(driver, tp_url):
 
     # print("DATUM: {}".format(datum))
 
+    driver.quit()  # TODO with?
+
     return datum
 
 
 # Betcha we could get the cookies from the driver and spin up moar instances to
 # run in parallel
 def get_data_from_urls(driver, urls):
-    data = []
-
-    for url in tqdm(urls, leave=True, unit="pkg url"):
-        datum = get_data_from_track_package_url(driver, url)
-
-        data.append(datum)
+    # Does p_map take leave/unit?
+    all_cookies = driver.get_cookies()
+    data = p_map(lambda url: get_data_from_track_package_url(all_cookies, url), urls)
+    #    for url in tqdm(urls, leave=True, unit="pkg url"):
+    #        datum = get_data_from_track_package_url(driver, url)
+    #
+    #        data.append(datum)
 
     # Throw out anything more than a week old. This is not the performant way
     # to do this (we could probably filter this at an earlier step), but it's
