@@ -37,6 +37,7 @@ def unique_everseen(iterable, key=None):
                 seen_add(k)
                 yield element
 
+
 def start_driver():
     driver = webdriver.Chrome(service_args=["--verbose"])
     login(driver)
@@ -135,7 +136,7 @@ def get_data_from_track_package_url(driver, tp_url):
     try:
         trackingId = driver.find_element(
             By.CLASS_NAME, "carrierRelatedInfo-trackingId-text"
-        ).text
+        ).text.replace("Tracking ID: ", "", 1)
     except:  # noqa:#722
         trackingId = ""
 
@@ -194,22 +195,19 @@ def get_data_from_urls(driver, urls):
     j = json.load(f)
     skipOrders = j["skip"]["orders"]
     skipTPAs = j["skip"]["tpas"]
-    for d in unique_everseen(data, lambda d: d['trackingId'] or d['orderIds'][0]):
+    for d in unique_everseen(data, lambda d: d["trackingId"] or d["orderIds"][0]):
         # If it's in the skip list, skip it.
-        if [v for v in d['orderIds'] if v in skipOrders]:
-            next
+        if [v for v in d["orderIds"] if v in skipOrders]:
+            continue
 
-        if d['trackingId'] in skipTPAs:
-            next
+        if d["trackingId"] in skipTPAs:
+            continue
 
         try:
-            datestr = d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
             date = dateparser.parse(
                 d["status"].replace("Delivered ", "", 1).replace("Arriving ", "", 1)
             )
-            target = (datetime.now() - timedelta(days=7))
-
-            print("H", datestr, date, target)
+            target = datetime.now() - timedelta(days=7)
 
             if d["status"] == "Your package may be lost" or date > target:
                 data2.append(d)
