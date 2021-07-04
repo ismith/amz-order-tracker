@@ -38,12 +38,22 @@ def unique_everseen(iterable, key=None):
                 seen_add(k)
                 yield element
 
-
 def start_driver():
     driver = webdriver.Chrome(service_args=["--verbose"])
     login(driver)
 
     return driver
+
+
+def fork_driver(orig_driver):
+    all_cookies = orig_driver.get_cookies()
+
+    new_driver = webdriver.Chrome(service_args=["--verbose"])
+    new_driver.get("https://www.amazon.com")
+    for cookie in all_cookies:
+        new_driver.add_cookie(cookie)
+
+    return new_driver
 
 
 def login(driver):
@@ -59,49 +69,55 @@ def login(driver):
 
 
 def orders_page_get_urls(driver):
-    # Defaults to past 3 months
-    orders_url = "https://www.amazon.com/gp/css/order-history?ref_=nav_orders_first"
-    driver.get(orders_url)
-
-    track_package_urls = []
-    page_count = 0
-
-    # Get all the "Track package" links from the page, then click "Next→", until
-    # you've covered all the pages.
     try:
-        while True:
-            page_count += 1
-            print("Page: {}".format(page_count))
-            locator = (By.LINK_TEXT, "Track package")
-            max_delay = 1  # seconds
-            # Wait until at least 1 "Track package" has shown up
-            try:
-                WebDriverWait(driver, max_delay).until(
-                    EC.visibility_of_element_located(locator)
-                )
-            except TimeoutException:
-                pass
+        new_driver = fork_driver(driver)
 
-            tp_urls = [
-                tp.get_attribute("href")
-                for tp in driver.find_elements(By.LINK_TEXT, "Track package")
-            ]
-            # print("Page {} had {} packages".format(page_count, len(tp_urls)))
-            track_package_urls.extend(tp_urls)
+        # Defaults to past 3 months
+        orders_url = "https://www.amazon.com/gp/css/order-history?ref_=nav_orders_first"
+        new_driver.get(orders_url)
 
-            # TODO: can we get the page # from the DOM?
-            driver.find_element(By.LINK_TEXT, "Next→").click()
-    except selenium.common.exceptions.NoSuchElementException:
-        # The 'Next→' button is no longer a link, so we're at the end of the
-        # orders.
-        pass
+        track_package_urls = []
+        page_count = 0
 
-    if False:
-        print(
-            "Processed {} pages, got {} track_package_urls",
-            page_count,
-            track_package_urls,  # noqa:E501
-        )
+        # Get all the "Track package" links from the page, then click "Next→", until
+        # you've covered all the pages.
+        try:
+            while True:
+                page_count += 1
+                print("Page: {}".format(page_count))
+                locator = (By.LINK_TEXT, "Track package")
+                max_delay = 1  # seconds
+                # Wait until at least 1 "Track package" has shown up
+                try:
+                    WebDriverWait(new_driver, max_delay).until(
+                        EC.visibility_of_element_located(locator)
+                    )
+                except TimeoutException:
+                    pass
+
+                tp_urls = [
+                    tp.get_attribute("href")
+                    for tp in new_driver.find_elements(By.LINK_TEXT, "Track package")
+                ]
+                # print("Page {} had {} packages".format(page_count, len(tp_urls)))
+                track_package_urls.extend(tp_urls)
+
+                # TODO: can we get the page # from the DOM?
+                new_driver.find_element(By.LINK_TEXT, "Next→").click()
+        except selenium.common.exceptions.NoSuchElementException:
+            # The 'Next→' button is no longer a link, so we're at the end of the
+            # orders.
+            pass
+
+        if False:
+            print(
+                "Processed {} pages, got {} track_package_urls",
+                page_count,
+                track_package_urls,  # noqa:E501
+            )
+
+    finally:
+        new_driver.quit()
 
     return (track_package_urls, page_count)
 
