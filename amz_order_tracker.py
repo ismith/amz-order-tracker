@@ -6,6 +6,7 @@ from timer import Timer
 import json
 from datetime import datetime, timedelta
 import dateparser
+import argparse
 
 import selenium
 from selenium import webdriver
@@ -39,9 +40,12 @@ def unique_everseen(iterable, key=None):
                 yield element
 
 
-def start_driver():
-    driver = webdriver.Chrome(service_args=["--verbose"])
-    login(driver)
+def new_driver(*args, headless=False):
+    chrome_options = webdriver.chrome.options.Options()
+    if headless:
+        chrome_options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=chrome_options)
 
     return driver
 
@@ -194,7 +198,6 @@ def get_data_from_urls(driver, urls):
         skipOrders = []
         skipTPAs = []
 
-
     for d in unique_everseen(data, lambda d: d["trackingId"] or d["orderIds"][0]):
         # If it's in the skip list, skip it.
         if [v for v in d["orderIds"] if v in skipOrders]:
@@ -219,9 +222,20 @@ def get_data_from_urls(driver, urls):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Get amazon orders")
+    parser.add_argument(
+        "--headful",
+        dest="headless",
+        action="store_false",
+        help="Run with a visible browser, not headless.",
+    )
+    args = parser.parse_args()
+
     try:
         with Timer(text="Start driver: {:.3f}"):
-            driver = start_driver()
+            driver = new_driver(headless=args.headless)
+        with Timer(text="login: {:.3f}"):
+            login(driver)
         with Timer(text="orders_page_get_urls: {:.3f}"):
             (urls, _) = orders_page_get_urls(driver)
         with Timer(text="get_data_from_urls: {:.3f}"):

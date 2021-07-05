@@ -41,6 +41,8 @@ you've already received:
 }
 ```
 
+If you want the browser this script runs to be visible, run with `--headful`.
+
 ## Prereqs
 You'll need a Selenium ChromeDriver:
 ```bash
