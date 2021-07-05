@@ -54,7 +54,7 @@ def login(driver):
     driver.find_element(By.ID, "ap_email").send_keys(config["email"], Keys.RETURN)
     driver.find_element(By.ID, "ap_password").send_keys(config["password"], Keys.RETURN)
 
-    max_delay = 10  # seconds
+    max_delay = 100  # seconds - long to allow time to 2FA if needed
     WebDriverWait(driver, max_delay).until(EC.title_contains("Amazon.com"))
 
 
