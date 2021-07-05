@@ -185,10 +185,16 @@ def get_data_from_urls(driver, urls):
 
     data2 = []
 
-    f = open("orders-received.json")
-    j = json.load(f)
-    skipOrders = j["skip"]["orders"]
-    skipTPAs = j["skip"]["tpas"]
+    try:
+        f = open("orders-received.json")
+        j = json.load(f)
+        skipOrders = j["skip"]["orders"]
+        skipTPAs = j["skip"]["tpas"]
+    except FileNotFoundError:
+        skipOrders = []
+        skipTPAs = []
+
+
     for d in unique_everseen(data, lambda d: d["trackingId"] or d["orderIds"][0]):
         # If it's in the skip list, skip it.
         if [v for v in d["orderIds"] if v in skipOrders]:
